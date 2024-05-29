@@ -1,0 +1,33 @@
+services:
+  mock:
+    image: caddy
+    command:
+      - caddy
+      - run
+      - -c
+      - /media/Caddyfile
+    volumes:
+      - ./acceptance-tests/mock:/media
+
+  lura:
+    image: golang:1.22
+    working_dir: /media
+    ports:
+      - 8080:8080
+    command:
+      - go
+      - run
+      - /media/cmd/lura/
+    volumes:
+      - ./:/media
+
+  hurl:
+    image: ghcr.io/orange-opensource/hurl:latest
+    volumes:
+      - ./acceptance-tests/test-cases:/tests:ro
+    depends_on:
+      - lura
+    entrypoint:
+      - tail
+      - -f
+      - /dev/null

@@ -1,0 +1,15 @@
+:8081
+
+log
+
+handle /registered/42 {
+	respond <<JSON
+    {"id": 42, "name": "John Doe", "email": "john@bar.com"}
+    JSON 200
+}
+
+handle /users/42/permissions {
+	respond <<JSON
+    {"profile": ["manage"], "posts": ["view"]}
+    JSON
+}
