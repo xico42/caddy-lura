@@ -1,4 +1,4 @@
-GET http://lura:8080/users/42
+GET http://caddylura:8082/users/42
 
 HTTP 200
 
