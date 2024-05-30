@@ -8,6 +8,8 @@ services:
       - /media/Caddyfile
     volumes:
       - ./acceptance-tests/mock:/media
+    ports:
+      - 8081:8081
 
   lura:
     image: golang:1.22
@@ -31,3 +33,19 @@ services:
       - tail
       - -f
       - /dev/null
+
+  caddylura:
+    image: golang:1.22
+    working_dir: /media
+    ports:
+      - 8082:8082
+    command:
+      - go
+      - run
+      - /media/cmd/caddy/
+      - run
+      - -c
+      - /media/Caddyfile
+    volumes:
+      - ./:/media
+
