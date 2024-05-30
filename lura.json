@@ -1,0 +1,39 @@
+{
+  "version": 3,
+  "name": "My lovely gateway",
+  "port": 8080,
+  "timeout": "10s",
+  "cache_ttl": "3600s",
+  "endpoints": [
+    {
+      "endpoint": "/users/{user}",
+      "method": "GET",
+      "backend": [
+        {
+          "host": [
+            "http://mock:8081"
+          ],
+          "url_pattern": "/registered/{user}",
+          "allow": [
+            "id",
+            "name",
+            "email"
+          ],
+          "mapping": {
+            "email": "personal_email"
+          }
+        },
+        {
+          "host": [
+            "http://mock:8081"
+          ],
+          "url_pattern": "/users/{user}/permissions",
+          "group": "permissions"
+        }
+      ],
+      "concurrent_calls": 2,
+      "timeout": "1000s",
+      "cache_ttl": "3600s"
+    }
+  ]
+}
