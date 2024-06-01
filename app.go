@@ -3,7 +3,7 @@ package caddylura
 import (
 	"context"
 	"github.com/caddyserver/caddy/v2"
-	"github.com/caddyserver/caddy/v2/caddyconfig/httpcaddyfile"
+	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	coregin "github.com/gin-gonic/gin"
 	"github.com/luraproject/lura/v2/config"
@@ -17,49 +17,65 @@ import (
 
 func init() {
 	caddy.RegisterModule(new(Lura))
-	httpcaddyfile.RegisterHandlerDirective("lura", func(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
-		return new(Lura), nil
-	})
+}
+
+type Backend struct {
+	Host       []string
+	URLPattern string
+	AllowList  []string
+	Mapping    map[string]string
+	Group      string
+	Method     string
+}
+
+type Endpoint struct {
+	URLPattern      string
+	Method          string
+	ConcurrentCalls int
+	Timeout         caddy.Duration
+	CacheTTL        caddy.Duration
+	Backends        []Backend
 }
 
 type Lura struct {
+	Endpoints []Endpoint
+	Timeout   caddy.Duration
+	CacheTTL  caddy.Duration
+
 	handler http.Handler
 }
 
 func (l *Lura) Provision(ctx caddy.Context) error {
+	endpoints := make([]*config.EndpointConfig, 0, len(l.Endpoints))
+	for _, e := range l.Endpoints {
+		backends := make([]*config.Backend, 0, len(e.Backends))
+		for _, b := range e.Backends {
+			backends = append(backends, &config.Backend{
+				Host:       b.Host,
+				URLPattern: b.URLPattern,
+				AllowList:  b.AllowList,
+				Mapping:    b.Mapping,
+				Group:      b.Group,
+				Method:     b.Method,
+			})
+		}
+
+		endpoints = append(endpoints, &config.EndpointConfig{
+			Endpoint:        e.URLPattern,
+			Method:          e.Method,
+			ConcurrentCalls: e.ConcurrentCalls,
+			CacheTTL:        time.Duration(e.CacheTTL),
+			Timeout:         time.Duration(e.Timeout),
+			Backend:         backends,
+		})
+	}
+
 	cfg := config.ServiceConfig{
-		Version:  3,
-		Name:     "Mey Lovely gateway",
-		Timeout:  10 * time.Second,
-		CacheTTL: 3600 * time.Second,
-		Endpoints: []*config.EndpointConfig{
-			{
-				Endpoint: "/users/{user}",
-				Method:   "GET",
-				Backend: []*config.Backend{
-					{
-						Host:       []string{"http://mock:8081"},
-						URLPattern: "/registered/{user}",
-						AllowList: []string{
-							"id",
-							"name",
-							"email",
-						},
-						Mapping: map[string]string{
-							"email": "personal_email",
-						},
-					},
-					{
-						Host:       []string{"http://mock:8081"},
-						URLPattern: "/users/{user}/permissions",
-						Group:      "permissions",
-					},
-				},
-				ConcurrentCalls: 2,
-				Timeout:         1000 * time.Second,
-				CacheTTL:        3600 * time.Second,
-			},
-		},
+		Version:   3,
+		Name:      "Caddy Lura",
+		Timeout:   time.Duration(l.Timeout),
+		CacheTTL:  time.Duration(l.CacheTTL),
+		Endpoints: endpoints,
 	}
 
 	err := cfg.Init()
@@ -111,5 +127,5 @@ var (
 	_ caddy.Provisioner = (*Lura)(nil)
 	// _ caddy.Validator             = (*Middleware)(nil)
 	_ caddyhttp.MiddlewareHandler = (*Lura)(nil)
-	// _ caddyfile.Unmarshaler       = (*Middleware)(nil)
+	_ caddyfile.Unmarshaler       = (*Lura)(nil)
 )
