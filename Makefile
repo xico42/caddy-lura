@@ -7,5 +7,12 @@ logs:
 	docker compose logs -f
 
 .PHONY: tests
-tests:
+tests: unit-tests acceptance-tests
+
+.PHONY: unit-tests
+unit-tests:
+	go test ./...
+
+.PHONY: acceptance-tests
+acceptance-tests:
 	docker compose exec -T hurl hurl --glob "/tests/**/*.hurl" --test --error-format=long
