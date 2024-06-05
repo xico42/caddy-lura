@@ -4,29 +4,27 @@ handle /__ready {
     respond OK 200
 }
 
-route {
-    lura {
-        timeout 10s
+lura {
+    timeout 10s
+    cache_ttl 3600s
+
+    endpoint /users/{user} {
+        method GET
+        concurrent_calls 2
+        timeout 1000s
         cache_ttl 3600s
 
-        endpoint /users/{user} {
-            method GET
-            concurrent_calls 2
-            timeout 1000s
-            cache_ttl 3600s
-
-            backend {$BACKEND_HOST} {
-                url_pattern /registered/{user}
-                allow id name email
-                mapping {
-                    email>personal_email
-                }
+        backend {$BACKEND_HOST} {
+            url_pattern /registered/{user}
+            allow id name email
+            mapping {
+                email>personal_email
             }
+        }
 
-            backend {$BACKEND_HOST} {
-                url_pattern /users/{user}/permissions
-                group permissions
-            }
+        backend {$BACKEND_HOST} {
+            url_pattern /users/{user}/permissions
+            group permissions
         }
     }
 }
