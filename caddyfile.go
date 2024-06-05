@@ -11,6 +11,7 @@ import (
 
 func init() {
 	httpcaddyfile.RegisterHandlerDirective("lura", parseCaddyfile)
+	httpcaddyfile.RegisterDirectiveOrder("lura", "after", "file_server")
 }
 
 func parseCaddyfile(h httpcaddyfile.Helper) (caddyhttp.MiddlewareHandler, error) {
