@@ -26,6 +26,7 @@ services:
   caddylura:
     environment:
       BACKEND_HOST: http://mock:8081
+      LISTEN_PORT: 8082
     image: golang:1.22
     working_dir: /media
     healthcheck:

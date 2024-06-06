@@ -13,3 +13,15 @@ handle /users/42/permissions {
     {"profile": ["manage"], "posts": ["view"]}
     JSON
 }
+
+handle /tenants/42 {
+    respond <<JSON
+    {"tenant_id": 42}
+    JSON
+}
+
+handle /tenants/21 {
+    respond <<JSON
+    {"tenant_id": 21}
+    JSON
+}
