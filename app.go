@@ -1,17 +1,12 @@
 package caddylura
 
 import (
-	"context"
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
 	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
-	coregin "github.com/gin-gonic/gin"
 	"github.com/luraproject/lura/v2/config"
-	"github.com/luraproject/lura/v2/logging"
-	"github.com/luraproject/lura/v2/proxy"
-	"github.com/luraproject/lura/v2/router/gin"
+	"github.com/xico42/caddy-lura/internal/lura"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -48,11 +43,15 @@ type Lura struct {
 func (l *Lura) Provision(ctx caddy.Context) error {
 	endpoints := make([]*config.EndpointConfig, 0, len(l.Endpoints))
 	for _, e := range l.Endpoints {
+		endpointParams := newParamsSetFromPattern(e.URLPattern)
+
 		backends := make([]*config.Backend, 0, len(e.Backends))
 		for _, b := range e.Backends {
+			backendParams := newParamsSetFromPattern(b.URLPattern)
+
 			backends = append(backends, &config.Backend{
 				Host:       b.Host,
-				URLPattern: b.URLPattern,
+				URLPattern: processBackendUrlPattern(b.URLPattern, backendParams, endpointParams),
 				AllowList:  b.AllowList,
 				Mapping:    b.Mapping,
 				Group:      b.Group,
@@ -83,25 +82,16 @@ func (l *Lura) Provision(ctx caddy.Context) error {
 		return err
 	}
 
-	logger, _ := logging.NewLogger("DEBUG", os.Stdout, "[LURA]")
+	for _, e := range cfg.Endpoints {
+		for _, b := range e.Backend {
+			b.URLPattern = applyCaddyPlaceholders(b.URLPattern)
+		}
+	}
 
-	var luraHandler http.Handler
-
-	routerFactory := gin.NewFactory(
-		gin.Config{
-			Engine:         coregin.Default(),
-			Middlewares:    []coregin.HandlerFunc{},
-			HandlerFactory: gin.EndpointHandler,
-			ProxyFactory:   proxy.DefaultFactory(logger),
-			Logger:         logger,
-			RunServer: func(ctx context.Context, serviceConfig config.ServiceConfig, handler http.Handler) error {
-				luraHandler = handler
-				return nil
-			},
-		},
-	)
-
-	routerFactory.New().Run(cfg)
+	luraHandler, err := lura.NewHandler(cfg)
+	if err != nil {
+		return err
+	}
 
 	l.handler = luraHandler
 

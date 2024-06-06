@@ -1,4 +1,4 @@
-:8082
+:{$LISTEN_PORT}
 
 handle /__ready {
     respond OK 200
@@ -25,6 +25,15 @@ lura {
         backend {$BACKEND_HOST} {
             url_pattern /users/{user}/permissions
             group permissions
+        }
+    }
+
+    endpoint /dynamic {
+        method GET
+
+        backend {$BACKEND_HOST} {
+            method GET
+            url_pattern /tenants/{header.X-Tenant-Id}
         }
     }
 }
