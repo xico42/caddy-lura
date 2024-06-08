@@ -88,7 +88,7 @@ func (l *Lura) Provision(ctx caddy.Context) error {
 		}
 	}
 
-	luraHandler, err := lura.NewHandler(cfg)
+	luraHandler, err := lura.NewHandler(cfg, ctx.Logger())
 	if err != nil {
 		return err
 	}
