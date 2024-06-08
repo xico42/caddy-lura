@@ -11,18 +11,43 @@ import (
 	"github.com/luraproject/lura/v2/transport/http/client"
 	"go.uber.org/zap"
 	"net/http"
+	"strings"
+)
+
+const (
+	defaultDebugPattern = "/__debug/*any"
+	defaultEchoPattern  = "/__echo/*any"
 )
 
 var (
 	backendHttpProxy = proxy.CustomHTTPProxyFactory(client.NewHTTPClient)
 )
 
-func NewHandler(cfg config.ServiceConfig, zl *zap.Logger) (http.Handler, error) {
-	logger := newLogger(zl)
+type Opts struct {
+	ServiceConfig config.ServiceConfig
+	ZapLogger     *zap.Logger
+	DebugPattern  string
+	EchoPattern   string
+}
+
+func NewHandler(opts Opts) (http.Handler, error) {
+	logger := newLogger(opts.ZapLogger)
 
 	var luraHandler http.Handler
 
 	proxyFactory := newProxyFactory(logger)
+
+	if opts.DebugPattern == "" {
+		opts.DebugPattern = defaultDebugPattern
+	} else {
+		opts.DebugPattern = strings.TrimRight(opts.DebugPattern, "/") + "/*any"
+	}
+
+	if opts.EchoPattern == "" {
+		opts.EchoPattern = defaultEchoPattern
+	} else {
+		opts.EchoPattern = strings.TrimRight(opts.EchoPattern, "/") + "/*any"
+	}
 
 	routerFactory := mux.NewFactory(
 		mux.Config{
@@ -31,8 +56,8 @@ func NewHandler(cfg config.ServiceConfig, zl *zap.Logger) (http.Handler, error) 
 			HandlerFactory: endpointHandler,
 			ProxyFactory:   proxyFactory,
 			Logger:         logger,
-			DebugPattern:   mux.DefaultDebugPattern,
-			EchoPattern:    mux.DefaultEchoPattern,
+			DebugPattern:   opts.DebugPattern,
+			EchoPattern:    opts.EchoPattern,
 			RunServer: func(ctx context.Context, serviceConfig config.ServiceConfig, handler http.Handler) error {
 				luraHandler = handler
 				return nil
@@ -40,7 +65,7 @@ func NewHandler(cfg config.ServiceConfig, zl *zap.Logger) (http.Handler, error) 
 		},
 	)
 
-	routerFactory.New().Run(cfg)
+	routerFactory.New().Run(opts.ServiceConfig)
 
 	return luraHandler, nil
 }

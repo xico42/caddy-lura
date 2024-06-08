@@ -46,11 +46,27 @@ func (l *Lura) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 
 			break
 		case "endpoint":
-			e, err := unmarshalEndpoint(d)
+			var e Endpoint
+			e, err = unmarshalEndpoint(d)
 			if err != nil {
 				return err
 			}
 			endpoints = append(endpoints, e)
+			break
+
+		case "debug_endpoint":
+			l.DebugEndpoint, err = unmarshalHelperEndpoint(d)
+			if err != nil {
+				return err
+			}
+			break
+
+		case "echo_endpoint":
+			l.EchoEndpoint, err = unmarshalHelperEndpoint(d)
+			if err != nil {
+				return err
+			}
+			break
 
 		default:
 			return d.Errf("unrecognized subdirective %s", d.Val())
@@ -219,4 +235,22 @@ func unmarshalSingleArg(d *caddyfile.Dispenser) (string, error) {
 	}
 
 	return args[0], nil
+}
+
+func unmarshalHelperEndpoint(d *caddyfile.Dispenser) (HelperEndpoint, error) {
+	args := d.RemainingArgs()
+	if len(args) > 1 {
+		return HelperEndpoint{}, d.ArgErr()
+	}
+
+	if len(args) == 1 {
+		return HelperEndpoint{
+			URLPattern: args[0],
+			Enabled:    true,
+		}, nil
+	}
+
+	return HelperEndpoint{
+		Enabled: true,
+	}, nil
 }

@@ -13,6 +13,9 @@ func TestParseCaddyFile(t *testing.T) {
 lura {
 	timeout 10s
 	cache_ttl 360s
+	
+	debug_endpoint /api/__debug
+	echo_endpoint
 
     endpoint /users/{user} {
         method GET
@@ -58,6 +61,14 @@ lura {
 	expected := &Lura{
 		Timeout:  caddy.Duration(10 * time.Second),
 		CacheTTL: caddy.Duration(360 * time.Second),
+		DebugEndpoint: HelperEndpoint{
+			URLPattern: "/api/__debug",
+			Enabled:    true,
+		},
+		EchoEndpoint: HelperEndpoint{
+			URLPattern: "",
+			Enabled:    true,
+		},
 		Endpoints: []Endpoint{
 			{
 				Method:     "GET",

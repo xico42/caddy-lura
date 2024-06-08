@@ -32,10 +32,18 @@ type Endpoint struct {
 	Backends        []Backend
 }
 
+type HelperEndpoint struct {
+	URLPattern string
+	Enabled    bool
+}
+
 type Lura struct {
 	Endpoints []Endpoint
-	Timeout   caddy.Duration
-	CacheTTL  caddy.Duration
+
+	Timeout       caddy.Duration
+	CacheTTL      caddy.Duration
+	DebugEndpoint HelperEndpoint
+	EchoEndpoint  HelperEndpoint
 
 	handler http.Handler
 }
@@ -75,6 +83,8 @@ func (l *Lura) Provision(ctx caddy.Context) error {
 		Timeout:   time.Duration(l.Timeout),
 		CacheTTL:  time.Duration(l.CacheTTL),
 		Endpoints: endpoints,
+		Debug:     l.DebugEndpoint.Enabled,
+		Echo:      l.EchoEndpoint.Enabled,
 	}
 
 	err := cfg.Init()
@@ -88,7 +98,12 @@ func (l *Lura) Provision(ctx caddy.Context) error {
 		}
 	}
 
-	luraHandler, err := lura.NewHandler(cfg, ctx.Logger())
+	luraHandler, err := lura.NewHandler(lura.Opts{
+		ServiceConfig: cfg,
+		ZapLogger:     ctx.Logger(),
+		DebugPattern:  l.DebugEndpoint.URLPattern,
+		EchoPattern:   l.EchoEndpoint.URLPattern,
+	})
 	if err != nil {
 		return err
 	}
