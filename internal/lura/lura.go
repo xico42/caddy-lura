@@ -9,16 +9,16 @@ import (
 	"github.com/luraproject/lura/v2/proxy"
 	"github.com/luraproject/lura/v2/router/mux"
 	"github.com/luraproject/lura/v2/transport/http/client"
+	"go.uber.org/zap"
 	"net/http"
-	"os"
 )
 
 var (
 	backendHttpProxy = proxy.CustomHTTPProxyFactory(client.NewHTTPClient)
 )
 
-func NewHandler(cfg config.ServiceConfig) (http.Handler, error) {
-	logger, _ := logging.NewLogger("DEBUG", os.Stdout, "[LURA]")
+func NewHandler(cfg config.ServiceConfig, zl *zap.Logger) (http.Handler, error) {
+	logger := newLogger(zl)
 
 	var luraHandler http.Handler
 
