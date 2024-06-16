@@ -32,10 +32,14 @@ type Lura struct {
 
 	// DebugEndpoint exposes an URL that can be used as a fake backend when the API gateway itself is used as a backend host.
 	// It logs all activity to aid in debugging interactions between the gateway and backends when Caddy is run with debug logging.
+	//
+	// The default url pattern is "/__debug/".
 	DebugEndpoint HelperEndpoint `json:"debug_endpoint,omitempty"`
 
 	// EchoEndpoint is a developer tool similar to DebugEndpoint but instead of logging, responses are printed directly.
 	// Useful for debugging configurations without verbose logging.
+	//
+	// The default url pattern is "/__echo/".
 	EchoEndpoint HelperEndpoint `json:"echo_endpoint,omitempty"`
 
 	// handler is the internal HTTP handler for serving requests handled by the API Gateway module within Caddy.
@@ -96,11 +100,9 @@ type Backend struct {
 // HelperEndpoint represents a helper endpoint for developers within the Caddy web server.
 type HelperEndpoint struct {
 	// URLPattern specifies the URL where the helper endpoint is served.
-	// Default value is "/__debug/".
 	URLPattern string `json:"url_pattern,omitempty"`
 
 	// Enabled specifies whether the helper endpoint is enabled or not.
-	// Default value is "/__echo/"
 	Enabled bool `json:"enabled,omitempty"`
 }
 
