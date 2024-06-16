@@ -14,38 +14,94 @@ func init() {
 	caddy.RegisterModule(new(Lura))
 }
 
-type Backend struct {
-	Host       []string
-	URLPattern string
-	AllowList  []string
-	Mapping    map[string]string
-	Group      string
-	Method     string
-}
-
-type Endpoint struct {
-	URLPattern      string
-	Method          string
-	ConcurrentCalls int
-	Timeout         caddy.Duration
-	CacheTTL        caddy.Duration
-	Backends        []Backend
-}
-
-type HelperEndpoint struct {
-	URLPattern string
-	Enabled    bool
-}
-
+// Lura implements a high-performance API Gateway using the Lura framework (https://luraproject.org/).
+//
+// This module provides advanced API gateway functionalities.
+// It allows defining multiple endpoints, each specifying backend services for request processing.
+// The module supports response aggregation and transformation rules per endpoint, facilitating
+// complex API orchestrations.
 type Lura struct {
-	Endpoints []Endpoint
+	// Set of endpoint definitions representing the gateway public API.
+	Endpoints []Endpoint `json:"endpoints,omitempty"`
 
-	Timeout       caddy.Duration
-	CacheTTL      caddy.Duration
-	DebugEndpoint HelperEndpoint
-	EchoEndpoint  HelperEndpoint
+	// Default timeout applied to all backends. This timeout is applied if not overridden at the endpoint level.
+	Timeout caddy.Duration `json:"timeout,omitempty"`
 
+	// Default cache duration applied to all backends. This affects caching headers for responses.
+	CacheTTL caddy.Duration `json:"cache_ttl,omitempty"`
+
+	// DebugEndpoint exposes an URL that can be used as a fake backend when the API gateway itself is used as a backend host.
+	// It logs all activity to aid in debugging interactions between the gateway and backends when Caddy is run with debug logging.
+	DebugEndpoint HelperEndpoint `json:"debug_endpoint,omitempty"`
+
+	// EchoEndpoint is a developer tool similar to DebugEndpoint but instead of logging, responses are printed directly.
+	// Useful for debugging configurations without verbose logging.
+	EchoEndpoint HelperEndpoint `json:"echo_endpoint,omitempty"`
+
+	// handler is the internal HTTP handler for serving requests handled by the API Gateway module within Caddy.
 	handler http.Handler
+}
+
+// Endpoint represents a public-facing gateway URL with specific configurations.
+type Endpoint struct {
+	// URLPattern defines the endpoint URL, supporting path parameters. It specifies the public API endpoint exposed by the gateway.
+	//
+	// Example: "/users/{id}/permissions"
+	URLPattern string `json:"url_pattern,omitempty"`
+
+	// Method specifies the HTTP method for the endpoint. If not specified, "GET" is assumed.
+	Method string `json:"method,omitempty"`
+
+	// ConcurrentCalls specifies the number of concurrent calls this endpoint makes to each backend.
+	// Controls the concurrency of backend requests to optimize performance.
+	ConcurrentCalls int `json:"concurrent_calls,omitempty"`
+
+	// Timeout specifies the timeout duration for requests to this endpoint. Overrides the default timeout if set.
+	Timeout caddy.Duration `json:"timeout,omitempty"`
+
+	// CacheTTL specifies the cache duration for responses from this endpoint. Controls caching headers for client caching.
+	CacheTTL caddy.Duration `json:"cache_ttl,omitempty"`
+
+	// Backends specifies the set of backend services that serve requests for this endpoint.
+	// Responses from multiple backends are aggregated based on rules defined in the gateway configuration.
+	Backends []Backend `json:"backends,omitempty"`
+}
+
+// Backend represents a backend service that handles requests for an endpoint.
+type Backend struct {
+	// Host specifies the list of backend hosts. Requests are load balanced between these hosts.
+	Host []string `json:"host,omitempty"`
+
+	// URLPattern specifies the URL pattern to locate the resource on the backend service.
+	// Path variables defined in the endpoint configuration can be used here, along with any Caddy placeholders.
+	//
+	// Example: "/api/{header.X-Tenant-Id}/resources/{id}"
+	URLPattern string `json:"url_pattern,omitempty"`
+
+	// AllowList specifies the list of response fields allowed from the backend.
+	// If empty, all fields are returned. Helps in filtering unnecessary data from responses.
+	AllowList []string `json:"allow_list,omitempty"`
+
+	// Mapping specifies renaming rules for response fields. Useful for standardizing response formats.
+	Mapping map[string]string `json:"mapping,omitempty"`
+
+	// Group specifies the property name to which the response should be moved.
+	// Useful for combining responses from multiple backends.
+	Group string `json:"group,omitempty"`
+
+	// Method specifies the HTTP method used for requests to the backend service.
+	Method string `json:"method,omitempty"`
+}
+
+// HelperEndpoint represents a helper endpoint for developers within the Caddy web server.
+type HelperEndpoint struct {
+	// URLPattern specifies the URL where the helper endpoint is served.
+	// Default value is "/__debug/".
+	URLPattern string `json:"url_pattern,omitempty"`
+
+	// Enabled specifies whether the helper endpoint is enabled or not.
+	// Default value is "/__echo/"
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 func (l *Lura) Provision(ctx caddy.Context) error {
