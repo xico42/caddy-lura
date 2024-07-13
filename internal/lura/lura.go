@@ -1,14 +1,12 @@
 package lura
 
 import (
-	"context"
-	"errors"
-	"github.com/caddyserver/caddy/v2"
+	"github.com/caddyserver/caddy/v2/modules/caddyhttp"
 	"github.com/luraproject/lura/v2/config"
-	"github.com/luraproject/lura/v2/logging"
 	"github.com/luraproject/lura/v2/proxy"
-	"github.com/luraproject/lura/v2/router/mux"
 	"github.com/luraproject/lura/v2/transport/http/client"
+	"github.com/luraproject/lura/v2/transport/http/server"
+	"github.com/xico42/caddy-lura/internal/httprouter"
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
@@ -20,7 +18,19 @@ const (
 )
 
 var (
+	logPrefix        = "[Service: Caddy Lura] "
 	backendHttpProxy = proxy.CustomHTTPProxyFactory(client.NewHTTPClient)
+	allMethods       = []string{
+		http.MethodGet,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodHead,
+		http.MethodOptions,
+		http.MethodConnect,
+		http.MethodTrace,
+	}
 )
 
 type Opts struct {
@@ -30,12 +40,13 @@ type Opts struct {
 	EchoPattern   string
 }
 
-func NewHandler(opts Opts) (http.Handler, error) {
+func NewHandler(opts Opts) (caddyhttp.Handler, error) {
 	logger := newLogger(opts.ZapLogger)
 
-	var luraHandler http.Handler
+	luraRouter := httprouter.New()
 
 	proxyFactory := newProxyFactory(logger)
+	_ = proxyFactory
 
 	if opts.DebugPattern == "" {
 		opts.DebugPattern = defaultDebugPattern
@@ -49,48 +60,13 @@ func NewHandler(opts Opts) (http.Handler, error) {
 		opts.EchoPattern = strings.TrimRight(opts.EchoPattern, "/") + "/*any"
 	}
 
-	routerFactory := mux.NewFactory(
-		mux.Config{
-			Engine:         newHttpRouterEngine(),
-			Middlewares:    []mux.HandlerMiddleware{},
-			HandlerFactory: endpointHandler,
-			ProxyFactory:   proxyFactory,
-			Logger:         logger,
-			DebugPattern:   opts.DebugPattern,
-			EchoPattern:    opts.EchoPattern,
-			RunServer: func(ctx context.Context, serviceConfig config.ServiceConfig, handler http.Handler) error {
-				luraHandler = handler
-				return nil
-			},
-		},
-	)
+	server.InitHTTPDefaultTransport(opts.ServiceConfig)
 
-	routerFactory.New().Run(opts.ServiceConfig)
+	registerEndpoints(luraRouter, proxyFactory, logger, opts)
 
-	return luraHandler, nil
+	return luraRouter, nil
 }
 
-func newProxyFactory(logger logging.Logger) proxy.Factory {
-	return proxy.NewDefaultFactory(newBackendFactory(), logger)
-}
-
-func newBackendFactory() proxy.BackendFactory {
-	return func(remote *config.Backend) proxy.Proxy {
-		next := backendHttpProxy(remote)
-		return func(ctx context.Context, request *proxy.Request) (*proxy.Response, error) {
-			request.GeneratePath(remote.URLPattern)
-			request.Params = nil
-			replacer, ok := ctx.Value(caddy.ReplacerCtxKey).(*caddy.Replacer)
-			if !ok {
-				return nil, errors.New("could not find caddy replacer")
-			}
-			path, err := replacer.ReplaceOrErr(request.Path, true, true)
-			if err != nil {
-				return nil, err
-			}
-			request.Path = path
-			request.URL.Path = path
-			return next(ctx, request)
-		}
-	}
+func clientIP(r *http.Request) string {
+	return caddyhttp.GetVar(r.Context(), caddyhttp.ClientIPVarKey).(string)
 }

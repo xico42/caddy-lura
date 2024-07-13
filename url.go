@@ -26,13 +26,11 @@ func (s paramsSet) contains(v string) bool {
 	return ok
 }
 
-func processBackendUrlPattern(subject string, backendParams paramsSet, endpointParams paramsSet) string {
+func processBackendUrlPattern(subject string, backendParams paramsSet) string {
 	output := subject
 
 	for p := range backendParams {
-		if !endpointParams.contains(p) {
-			output = strings.ReplaceAll(output, "{"+p+"}", "{resp042_."+p+"}")
-		}
+		output = strings.ReplaceAll(output, "{"+p+"}", "{resp042_."+p+"}")
 	}
 
 	return output

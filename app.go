@@ -43,7 +43,7 @@ type Lura struct {
 	EchoEndpoint HelperEndpoint `json:"echo_endpoint,omitempty"`
 
 	// handler is the internal HTTP handler for serving requests handled by the API Gateway module within Caddy.
-	handler http.Handler
+	handler caddyhttp.Handler
 }
 
 // Endpoint represents a public-facing gateway URL with specific configurations.
@@ -109,15 +109,14 @@ type HelperEndpoint struct {
 func (l *Lura) Provision(ctx caddy.Context) error {
 	endpoints := make([]*config.EndpointConfig, 0, len(l.Endpoints))
 	for _, e := range l.Endpoints {
-		endpointParams := newParamsSetFromPattern(e.URLPattern)
-
 		backends := make([]*config.Backend, 0, len(e.Backends))
 		for _, b := range e.Backends {
 			backendParams := newParamsSetFromPattern(b.URLPattern)
 
 			backends = append(backends, &config.Backend{
-				Host:       b.Host,
-				URLPattern: processBackendUrlPattern(b.URLPattern, backendParams, endpointParams),
+				Host: b.Host,
+				// ignore lura's placeholder processing, so that we may depend upon caddy's replacer only
+				URLPattern: processBackendUrlPattern(b.URLPattern, backendParams),
 				AllowList:  b.AllowList,
 				Mapping:    b.Mapping,
 				Group:      b.Group,
@@ -172,8 +171,7 @@ func (l *Lura) Provision(ctx caddy.Context) error {
 }
 
 func (l *Lura) ServeHTTP(rw http.ResponseWriter, req *http.Request, next caddyhttp.Handler) error {
-	l.handler.ServeHTTP(rw, req)
-	return nil
+	return l.handler.ServeHTTP(rw, req)
 }
 
 func (*Lura) CaddyModule() caddy.ModuleInfo {
