@@ -1,4 +1,4 @@
-GET http://caddylura:8082/__custom/echo/baz/
+GET http://{{host}}/__custom/echo/baz/
 
 {
     "foo": "bar"

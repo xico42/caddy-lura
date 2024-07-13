@@ -1,4 +1,4 @@
-GET http://caddylura:8082/users/42
+GET http://{{host}}/users/42
 
 HTTP 200
 

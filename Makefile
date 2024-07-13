@@ -15,4 +15,4 @@ unit-tests:
 
 .PHONY: acceptance-tests
 acceptance-tests:
-	docker compose exec -T hurl hurl --glob "/tests/**/*.hurl" --test --error-format=long
+	docker compose exec -T hurl hurl --glob "/tests/**/*.hurl" --test --error-format=long --variable host=caddylura:8082

@@ -1,4 +1,4 @@
-GET http://caddylura:8082/__debug/any/
+GET http://{{host}}/__debug/any/
 
 HTTP 200
 
